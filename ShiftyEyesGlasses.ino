@@ -112,13 +112,13 @@ void loop() {
     uint32_t dt = loopTimer.update();
     animationElapsed += dt;
 
-    // Update interval has not elapsed, wait a bit and return.
+    // Animation interval has not elapsed, wait a bit and return.
     if (animationElapsed < animationInterval) {
         delay(1);
         return;
     }
 
-    // Roll over
+    // Roll over, using modulus in case "drop" some frames.
     animationElapsed %= animationInterval;
 
     // clear the display
@@ -245,6 +245,6 @@ void updateBlink() {
 
     // Done blinking, start a new countdown!
     if (blinkCountdown == 0) {
-        blinkCountdown = random(20, 180);
+        blinkCountdown = random(50, 180);
     }    
 }
