@@ -49,7 +49,7 @@ uint32_t animationElapsed = 0;
 
 // Pupil animation.
 // This is basically the same as the 'roboface' sample with some tiny adjustments.
-const uint16_t pupilColor = Color::color565(255, 0, 0);
+const uint16_t pupilColor = Color::rgb565(255, 0, 0);
 int8_t pupilX = 3;
 int8_t pupilY = 3;
 int8_t nextPupilX = pupilX;
@@ -61,12 +61,12 @@ uint16_t gazeCountdown = 100;
 
 // Blink animation
 static const uint8_t eyeOutlineBrightness = 16;
-const uint32_t ringEyeOutlineColor = Color::color(255, 255, 0);
+const uint32_t ringEyeOutlineColor = Color::rgb(255, 255, 0);
 
 // Convert the ring blink color and brightness to a matrix color value.
 // Note that these LEDs lose color resolution on the low end, so the colors might
 // not look how you expect linear interpolation like this.
-const uint16_t matrixEyeOutlineColor = Color::color565(Color::scale(ringEyeOutlineColor, eyeOutlineBrightness));
+const uint16_t matrixEyeOutlineColor = Color::rgb565(Color::scale(ringEyeOutlineColor, eyeOutlineBrightness));
 
 // The blink countdown doubles as an "open eye state" timer,
 // as well as an animation frame counter.

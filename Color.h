@@ -24,15 +24,15 @@
 
 namespace Color {
 
-    inline uint32_t color(uint8_t r, uint8_t g, uint8_t b) {
+    inline uint32_t rgb(uint8_t r, uint8_t g, uint8_t b) {
         return Adafruit_IS31FL3741::Color(r, g, b);
     }
 
-    inline uint16_t color565(uint32_t color888) {
+    inline uint16_t rgb565(uint32_t color888) {
         return Adafruit_IS31FL3741::color565(color888);
     }
 
-    inline uint16_t color565(uint8_t r, uint8_t g, uint8_t b) {
+    inline uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
         return Adafruit_IS31FL3741::color565(r, g, b);
     }    
 
@@ -41,7 +41,7 @@ namespace Color {
     }
 
     inline uint16_t hsv565(uint16_t hue, uint8_t sat = 255, uint8_t val = 255) {
-        return color565(hsv(hue, sat, val));
+        return rgb565(hsv(hue, sat, val));
     }    
 
     inline uint32_t scale(uint32_t color, uint8_t brightness) {
