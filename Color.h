@@ -54,7 +54,7 @@ namespace Color {
         uint8_t b = (uint8_t)color;
         b = (b * brightness) / 255;
 
-        return Color::color(r, g, b);
+        return Color::rgb(r, g, b);
     }
 }
 
