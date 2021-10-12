@@ -29,6 +29,7 @@
 
 #include <Adafruit_IS31FL3741.h>
 #include <WiiChuck.h>
+#include "WiiChuckButton.h"
 #include "Rings.h"
 #include "LoopTimer.h"
 #include "Color.h"
@@ -77,7 +78,8 @@ uint8_t blinkCountdown = 255;
 const uint8_t blinkRowIndices[] = {1, 2, 3, 4, 5, 6, 7, 7, 7, 6, 5, 4, 3, 2, 1};
 const uint8_t numBlinkFrames = sizeof(blinkRowIndices);
 
-bool wasZDown = false;
+WiiChuckButton zButton(&nunchuck, 10);
+WiiChuckButton cButton(&nunchuck, 11);
 
 void setup() {
     Serial.begin(115200);
@@ -90,6 +92,9 @@ void setup() {
     if (nunchuck.type == Unknown) {
         nunchuck.type = NUNCHUCK;
     }
+
+    zButton.setup();
+    cButton.setup();    
 
     if (!glasses.begin(IS3741_ADDR_DEFAULT, &Wire1)) {
         Serial.println("glasses not found");
@@ -129,6 +134,8 @@ void loop() {
 
     // Read the nunchuck
     nunchuck.readData();
+    zButton.update();
+    cButton.update();
 
     // clear the display
     glasses.fill(0);
@@ -179,12 +186,8 @@ void drawRingRow(uint8_t index, uint32_t color) {
 }
 
 void updateBlink() {
-    const bool zDown = nunchuck.values[10];
-    const bool zRose = zDown && !wasZDown;
-    wasZDown = zDown;
-    
     if (blinkCountdown == 255) {
-        if (zRose) {
+        if (zButton.rose()) {
             blinkCountdown = numBlinkFrames;
         }       
     } else {
