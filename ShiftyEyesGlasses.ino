@@ -28,35 +28,57 @@
 // slower microcontrollers you may want to increase the update interval until the animation is smooth).
 
 #include <Adafruit_IS31FL3741.h>
+#include "Rings.h"
 #include "LoopTimer.h"
 #include "Color.h"
 
 Adafruit_EyeLights_buffered glasses;
 
-// Update once every 16 ms, or about 60 fps.
-const uint32_t updateInterval = 16;
+// Simple helper class to help keep track of elapsed time.
 LoopTimer loopTimer;
-uint32_t elapsed = 0;
 
-// Define colors and brightness.
-static const uint8_t ringBrightness = 16;
-const uint32_t ringColor = Color::color(255, 255, 0);
-const uint16_t eyeColor = Color::color565(255, 0, 0);
+// Animate once every 16 ms, or about 60 fps.
+// You want this number to at least be as high as the amount of time it takes 
+// to update the animations plus draw the pixels to the glasses. On the
+// glasses driver, it takes about 10-11 ms, so we can easily achieve ~60 fps.
+// I like this better than using a delay because it allows for some variablility
+// in logic and animation updates before the animation appears to "lag".
+// You can also just slow this down if you prefer a slower animation rate.
+const uint32_t animationInterval = 16;
+uint32_t animationElapsed = 0;
 
-// Variables for pupil animation.
+// Pupil animation.
+// This is basically the same as the 'roboface' sample with some tiny adjustments.
+const uint16_t pupilColor = Color::color565(255, 0, 0);
 int8_t pupilX = 3;
 int8_t pupilY = 3;
 int8_t nextPupilX = pupilX;
 int8_t nextPupilY = pupilY;
 int8_t dX = 0;
 int8_t dY = 0;
-uint16_t gazeFrames = 20;
+uint16_t gazeFrames = 80;
 uint16_t gazeCountdown = 100;
 
-// Variables for blink animation.
-uint8_t blinkHeight[] = {0, 1, 2, 3, 4, 5, 6, 6, 6, 5, 4, 3, 2, 1, 0};
-const uint8_t blinkHeightFrames = sizeof(blinkHeight);
-uint16_t blinkCountdown = 100;
+// Blink animation
+static const uint8_t eyeOutlineBrightness = 16;
+const uint32_t ringEyeOutlineColor = Color::color(255, 255, 0);
+
+// Convert the ring blink color and brightness to a matrix color value.
+// Note that these LEDs lose color resolution on the low end, so the colors might
+// not look how you expect linear interpolation like this.
+const uint16_t matrixEyeOutlineColor = Color::color565(Color::scale(ringEyeOutlineColor, eyeOutlineBrightness));
+
+// The blink countdown doubles as an "open eye state" timer,
+// as well as an animation frame counter.
+uint32_t blinkCountdown = random(20, 100);
+
+// These are the "Frames" of animation for the rings when blinking.
+// Each value corresponds to the top line of the blink, or the "eyelid".
+// On that line, we draw the eye outline on both the matrix and the rings.
+// Above that line, we clear the pixels by drawing "black", giving the 
+// appearance of blinking.
+const uint8_t blinkRowIndices[] = {1, 2, 3, 4, 5, 6, 7, 7, 7, 6, 5, 4, 3, 2, 1};
+const uint8_t numBlinkFrames = sizeof(blinkRowIndices);
 
 void setup() {
     Serial.begin(115200);
@@ -75,8 +97,8 @@ void setup() {
 
     // Set ring brightness and rotation.
     glasses.setRotation(0);
-    glasses.left_ring.setBrightness(ringBrightness);
-    glasses.right_ring.setBrightness(ringBrightness);    
+    glasses.left_ring.setBrightness(eyeOutlineBrightness);
+    glasses.right_ring.setBrightness(eyeOutlineBrightness);    
 
     // Clear glasses
     glasses.fill(0);
@@ -88,37 +110,29 @@ void setup() {
 void loop() {
     // Update the loop timer and track how much time has elapsed since the last update.
     uint32_t dt = loopTimer.update();
-    elapsed += dt;
+    animationElapsed += dt;
 
     // Update interval has not elapsed, wait a bit and return.
-    if (elapsed < updateInterval) {
+    if (animationElapsed < animationInterval) {
         delay(1);
         return;
     }
 
     // Roll over
-    elapsed %= updateInterval;
+    animationElapsed %= animationInterval;
 
     // clear the display
     glasses.fill(0);
 
-    // This is a pretty naive and brute force approach to drawing everything, and could definitely
-    // be done more efficiently and with a lot less overdraw. The basic strategy here:
-    // 1) Draw the rings
-    glasses.left_ring.fill(ringColor);
-    glasses.right_ring.fill(ringColor);
-
-    // 2) Draw the pupils
+    // 1) Update and draw the pupils. We do this first
+    // so the "blink" animation will draw over the
+    // pupils, making them appear to go behind the eyelids.
     updatePupils();
 
-    // 3) When blinking, clear the corresponding matrix and ring pixels down to 
-    //    the "blink height" for each frame of the blink animation, drawing over
-    //    the eye outline and pupil.
-    // 4) Also, when blinking, draw a line representing the "eye lid"
-    //    at the top of the "blink height", as long as that row is within the matrix.        
+    // 2) Update the blink animation.
     updateBlink();
 
-    // 5) Finally, flush the buffer to the leds.
+    // 3) Show our pretty eyes.
     glasses.show();
 }
 
@@ -155,7 +169,7 @@ void updatePupils() {
     gazeCountdown -= 1;
 
     if (gazeCountdown <= gazeFrames) {
-        // Eyes are moving, draw interpolated position.
+        // Pupils are moving, draw interpolated position.
         drawPupils(nextPupilX - (dX * gazeCountdown / gazeFrames),
                    nextPupilY - (dY * gazeCountdown / gazeFrames));
 
@@ -164,63 +178,65 @@ void updatePupils() {
         }
     }
     else {
-        // Eyes are stationary.
+        // Pupils are stationary.
         drawPupils(pupilX, pupilY);
     }
 }
 
 void drawPupils(int8_t x, int8_t y) {
-    glasses.fillRect(x, y, 2, 2, eyeColor);
-    glasses.fillRect(x + 10, y, 2, 2, eyeColor);
+    glasses.fillRect(x, y, 2, 2, pupilColor);
+    glasses.fillRect(x + 10, y, 2, 2, pupilColor);
+}
+
+void drawRingRow(uint8_t index, uint32_t color) {
+    auto ringRow = Rings::getRow(index);
+    
+    for (uint8_t i = 0; i < ringRow->numIndices; i++) {
+        glasses.left_ring.setPixelColor(ringRow->indices[i], color);
+        glasses.right_ring.setPixelColor(ringRow->indices[i], color);
+    }    
 }
 
 void updateBlink() {
     blinkCountdown--;
 
     // The last frames of the countdown are using to animate the blink.
-    if (blinkCountdown < blinkHeightFrames) {
-        auto frame = blinkHeightFrames - 1 - blinkCountdown;
+    if (blinkCountdown < numBlinkFrames) {
+        auto frameIndex = numBlinkFrames - 1 - blinkCountdown;
+        auto blinkRowIndex = blinkRowIndices[frameIndex];
 
-        // "Row 0". Clear the top 5 pixels of the rings, since they aren't in the matrix.
-        const uint8_t topRow[] = {22, 23, 0, 1, 2};
-
-        for (uint32_t i = 0; i < sizeof(topRow); i++) {
-            glasses.left_ring.setPixelColor(topRow[i], 0);
-            glasses.right_ring.setPixelColor(topRow[i], 0);
-        }
-
-        // Get the "blink height" for the frame.
-        auto height = blinkHeight[frame];
-
-        // Clear rows 1-5 of the matrix. This will also clear the shared ring pixels.
-        if (height > 0) {
-            auto fillHeight = min(height, 5);
-            glasses.fillRect(0, 0, glasses.width(), fillHeight, 0);
-        }
-
-        // On row 1, we need to also clear a ring pixel that's not part of the matrix.
-        if (height > 1) {
-            const uint16_t pixelIndex = 4;
-            glasses.left_ring.setPixelColor(pixelIndex, 0);
-            glasses.right_ring.setPixelColor(glasses.right_ring.numPixels() - pixelIndex, 0);
-        }
-
-        // "Row 6" is the ring pixels just under the matrix.
-        if (height > 5) {
-            const uint8_t row[] = {8, 16};
-
-            for (uint32_t i = 0; i < sizeof(row); i++) {
-                glasses.left_ring.setPixelColor(row[i], 0);
-                glasses.right_ring.setPixelColor(row[i], 0);
+        // Draw the matrix pixels. We're drawing first so the ring drawing
+        // can have priority over the overlapping matrix pixels.
+        // The matrix's first row is actually the ring's second "row",
+        // so we can just draw zeros over the "eye" pixels,
+        // except on the line where we want to draw the eyelid
+        for (int i = 0; i < glasses.height(); i++) {
+            int matrixRowIndex = blinkRowIndex - 1;
+            
+            if (matrixRowIndex >= 0) {
+                if (i == matrixRowIndex) {
+                    glasses.fillRect(1, matrixRowIndex, 6, 1, matrixEyeOutlineColor);
+                    glasses.fillRect(11, matrixRowIndex, 6, 1, matrixEyeOutlineColor);
+                }
+                else if (i < matrixRowIndex) {
+                    glasses.fillRect(1, i, 6, 1, 0);
+                    glasses.fillRect(11, i, 6, 1, 0);
+                }
             }
         }
 
-        // draw eyelid only up until the last row of the matrix.
-        if (height <= 5) {
-            auto c = Color::scale(ringColor, ringBrightness);
-            glasses.fillRect(0, height, 7, 1, Color::color565(c));
-            glasses.fillRect(11, height, 7, 1, Color::color565(c));
+        // Draw the rings now, clearing the rows above the "blink row"
+        for (int i = 0; i < Rings::numRows; i++) {
+            if (i < blinkRowIndex) {
+                drawRingRow(i, 0);
+            } else {
+                drawRingRow(i, ringEyeOutlineColor);
+            }
         }
+    } else {
+        // We're not blinking, draw all of the ring pixels.
+        glasses.left_ring.fill(ringEyeOutlineColor);
+        glasses.right_ring.fill(ringEyeOutlineColor);
     }
 
     // Done blinking, start a new countdown!
