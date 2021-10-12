@@ -28,11 +28,14 @@
 // slower microcontrollers you may want to increase the update interval until the animation is smooth).
 
 #include <Adafruit_IS31FL3741.h>
+#include <WiiChuck.h>
 #include "Rings.h"
 #include "LoopTimer.h"
 #include "Color.h"
 
 Adafruit_EyeLights_buffered glasses;
+
+Accessory nunchuck(&Wire);
 
 // Simple helper class to help keep track of elapsed time.
 LoopTimer loopTimer;
@@ -52,12 +55,6 @@ uint32_t animationElapsed = 0;
 const uint16_t pupilColor = Color::rgb565(255, 0, 0);
 int8_t pupilX = 3;
 int8_t pupilY = 3;
-int8_t nextPupilX = pupilX;
-int8_t nextPupilY = pupilY;
-int8_t dX = 0;
-int8_t dY = 0;
-uint16_t gazeFrames = 80;
-uint16_t gazeCountdown = 100;
 
 // Blink animation
 static const uint8_t eyeOutlineBrightness = 16;
@@ -70,7 +67,7 @@ const uint16_t matrixEyeOutlineColor = Color::rgb565(Color::scale(ringEyeOutline
 
 // The blink countdown doubles as an "open eye state" timer,
 // as well as an animation frame counter.
-uint32_t blinkCountdown = random(20, 100);
+uint8_t blinkCountdown = 255;
 
 // These are the "Frames" of animation for the rings when blinking.
 // Each value corresponds to the top line of the blink, or the "eyelid".
@@ -80,15 +77,24 @@ uint32_t blinkCountdown = random(20, 100);
 const uint8_t blinkRowIndices[] = {1, 2, 3, 4, 5, 6, 7, 7, 7, 6, 5, 4, 3, 2, 1};
 const uint8_t numBlinkFrames = sizeof(blinkRowIndices);
 
+bool wasZDown = false;
+
 void setup() {
     Serial.begin(115200);
+//    while(!Serial);
 
-    if (!glasses.begin(IS3741_ADDR_DEFAULT, &Wire)) {
+    Wire.setClock(400000);
+    Wire1.setClock(800000);
+
+    nunchuck.begin();
+    if (nunchuck.type == Unknown) {
+        nunchuck.type = NUNCHUCK;
+    }
+
+    if (!glasses.begin(IS3741_ADDR_DEFAULT, &Wire1)) {
         Serial.println("glasses not found");
         while(true);
     }
-
-    Wire.setClock(800000); 
 
     // Set brightness to max and bring controller out of shutdown state
     glasses.setLEDscaling(0xFF);
@@ -121,6 +127,9 @@ void loop() {
     // Roll over, using modulus in case "drop" some frames.
     animationElapsed %= animationInterval;
 
+    // Read the nunchuck
+    nunchuck.readData();
+
     // clear the display
     glasses.fill(0);
 
@@ -140,47 +149,19 @@ bool isEyePositionValid(int8_t dx, int8_t dy) {
     return (dx * dx + dy * dy) >= 8;
 }
 
-void chooseNextPupilPosition() {
-    // We've arrived at the next pupil position.
-    pupilX = nextPupilX;
-    pupilY = nextPupilY;        
-
-    // Loop until we randomly choose an eye position within the circle.
-    do {
-        nextPupilX = random(6); 
-        nextPupilY = random(4);
-        dX = nextPupilX - 3;
-        dY = nextPupilY - 2;
-    } 
-    while(isEyePositionValid(dX, dY));
-
-    // Distance to next pupil position.
-    dX = nextPupilX - pupilX;
-    dY = nextPupilY - pupilY;
-
-    // Duration of eye movement.
-    gazeFrames = random(4, 20);
-
-    // Count to end of next pupil movement.
-    gazeCountdown = random(gazeFrames, 120);
-}
-
 void updatePupils() {
-    gazeCountdown -= 1;
+    // Invert since "left" is opposite wearer's left if looking at glasses.
+    int joyX = 255 - nunchuck.values[0];
 
-    if (gazeCountdown <= gazeFrames) {
-        // Pupils are moving, draw interpolated position.
-        drawPupils(nextPupilX - (dX * gazeCountdown / gazeFrames),
-                   nextPupilY - (dY * gazeCountdown / gazeFrames));
+    // Invert so that "down" matches.
+    int joyY = 255 - nunchuck.values[1];
 
-        if (gazeCountdown == 0) {
-            chooseNextPupilPosition();
-        }
-    }
-    else {
-        // Pupils are stationary.
-        drawPupils(pupilX, pupilY);
-    }
+    // bias joyY downward since there are fewer pixels on the bottom half
+    joyY = min(joyY + 50, 255);
+    
+    pupilX = map(joyX, 25, 230, 1, 6);
+    pupilY = map(joyY, 25, 230, 0, 3);
+    drawPupils(pupilX, pupilY);    
 }
 
 void drawPupils(int8_t x, int8_t y) {
@@ -198,7 +179,21 @@ void drawRingRow(uint8_t index, uint32_t color) {
 }
 
 void updateBlink() {
-    blinkCountdown--;
+    const bool zDown = nunchuck.values[10];
+    const bool zRose = zDown && !wasZDown;
+    wasZDown = zDown;
+    
+    if (blinkCountdown == 255) {
+        if (zRose) {
+            blinkCountdown = numBlinkFrames;
+        }       
+    } else {
+        if (blinkCountdown > 0) {
+            blinkCountdown--;
+        } else {
+            blinkCountdown = 255;
+        }
+    }
 
     // The last frames of the countdown are using to animate the blink.
     if (blinkCountdown < numBlinkFrames) {
@@ -242,9 +237,4 @@ void updateBlink() {
         glasses.left_ring.fill(ringEyeOutlineColor);
         glasses.right_ring.fill(ringEyeOutlineColor);
     }
-
-    // Done blinking, start a new countdown!
-    if (blinkCountdown == 0) {
-        blinkCountdown = random(50, 180);
-    }    
 }
