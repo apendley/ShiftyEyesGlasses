@@ -161,7 +161,7 @@ void chooseNextPupilPosition() {
     // Duration of eye movement.
     gazeFrames = random(4, 20);
 
-    // Count to end of next movement.
+    // Count to end of next pupil movement.
     gazeCountdown = random(gazeFrames, 120);
 }
 
@@ -215,17 +215,21 @@ void updateBlink() {
             
             if (matrixRowIndex >= 0) {
                 if (i == matrixRowIndex) {
+                    // Left eye
                     glasses.fillRect(1, matrixRowIndex, 6, 1, matrixEyeOutlineColor);
+                    // Right eye
                     glasses.fillRect(11, matrixRowIndex, 6, 1, matrixEyeOutlineColor);
                 }
                 else if (i < matrixRowIndex) {
+                    // Left eye
                     glasses.fillRect(1, i, 6, 1, 0);
+                    // Right eye
                     glasses.fillRect(11, i, 6, 1, 0);
                 }
             }
         }
 
-        // Draw the rings now, clearing the rows above the "blink row"
+        // Draw the rings now, clearing the rows above the "blink row".
         for (int i = 0; i < Rings::numRows; i++) {
             if (i < blinkRowIndex) {
                 drawRingRow(i, 0);
