@@ -157,7 +157,7 @@ void updatePupils() {
     int joyY = 255 - nunchuck.values[1];
 
     // bias joyY downward since there are fewer pixels on the bottom half
-    joyY = min(joyY + 50, 255);
+    joyY = min(joyY + 48, 255);
     
     pupilX = map(joyX, 25, 230, 1, 6);
     pupilY = map(joyY, 25, 230, 0, 3);
