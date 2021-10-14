@@ -13,7 +13,7 @@ public:
     virtual void setupInput() { }
     virtual int readInput() { return 0; }
 
-    virtual void setup() {
+    virtual void begin() {
         setupInput();
         state = lastState = debounceLastState = readInput();
         lastDebounceTime = 0;        
