@@ -51,7 +51,7 @@ uint32_t animationElapsed = 0;
 // This is basically the same as the 'roboface' sample with some tiny adjustments.
 const uint16_t pupilColor = Color::rgb565(255, 0, 0);
 int8_t pupilX = 3;
-int8_t pupilY = 3;
+int8_t pupilY = 0;
 int8_t nextPupilX = pupilX;
 int8_t nextPupilY = pupilY;
 int8_t dX = 0;
@@ -136,8 +136,13 @@ void loop() {
     glasses.show();
 }
 
-bool isEyePositionValid(int8_t dx, int8_t dy) {
-    return (dx * dx + dy * dy) < 8;
+bool isEyePositionValid(int8_t x, int8_t y) {
+    // Keep the pupils from going behind the rings at the top corners.
+    if (y == 0) {
+        return x > 1 && x < 5;
+    }
+    
+    return true;
 }
 
 void chooseNextPupilPosition() {
@@ -147,12 +152,10 @@ void chooseNextPupilPosition() {
 
     // Loop until we randomly choose an eye position within the circle.
     do {
-        nextPupilX = random(6); 
-        nextPupilY = random(4);
-        dX = nextPupilX - 3;
-        dY = nextPupilY - 2;
+        nextPupilX = random(5) + 1;
+        nextPupilY = random(2);
     } 
-    while(!isEyePositionValid(dX, dY));
+    while(!isEyePositionValid(nextPupilX, nextPupilY));
 
     // Distance to next pupil position.
     dX = nextPupilX - pupilX;
@@ -184,8 +187,8 @@ void updatePupils() {
 }
 
 void drawPupils(int8_t x, int8_t y) {
-    glasses.fillRect(x, y, 2, 2, pupilColor);
-    glasses.fillRect(x + 10, y, 2, 2, pupilColor);
+    glasses.fillRect(x, y, 2, 4, pupilColor);
+    glasses.fillRect(x + 10, y, 2, 4, pupilColor);
 }
 
 void drawRingRow(uint8_t index, uint32_t color) {
