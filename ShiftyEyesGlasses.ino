@@ -137,7 +137,7 @@ void loop() {
 }
 
 bool isEyePositionValid(int8_t dx, int8_t dy) {
-    return (dx * dx + dy * dy) >= 8;
+    return (dx * dx + dy * dy) < 8;
 }
 
 void chooseNextPupilPosition() {
@@ -152,7 +152,7 @@ void chooseNextPupilPosition() {
         dX = nextPupilX - 3;
         dY = nextPupilY - 2;
     } 
-    while(isEyePositionValid(dX, dY));
+    while(!isEyePositionValid(dX, dY));
 
     // Distance to next pupil position.
     dX = nextPupilX - pupilX;
