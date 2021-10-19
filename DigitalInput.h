@@ -13,7 +13,7 @@ public:
     virtual void setupInput() { }
     virtual int readInput() { return 0; }
 
-    virtual void setup() {
+    virtual void begin() {
         setupInput();
         state = lastState = debounceLastState = readInput();
         lastDebounceTime = 0;        
@@ -49,15 +49,17 @@ public:
     }
     
     bool fell() const {
-        return changed() && isOff();
+        return changed() && !isOn();
     }
 
     virtual bool isOn() const {
-        return state;
+        return getState();
     }
 
-    bool isOff() const {
-        return !isOn();
+protected:
+
+    uint8_t getState() const {
+        return state;
     }
 
 private:
@@ -96,10 +98,10 @@ public:
 
     virtual bool isOn() const {
         if (mode != Mode::pullup) {
-            return isOn();
+            return getState();
         }
         else {
-            return isOff();
+            return !getState();
         }
     }        
 
