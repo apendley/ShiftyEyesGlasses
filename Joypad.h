@@ -1,74 +1,80 @@
-#ifndef _JOYSTICK_H_
-#define _JOYSTICK_H_
-
-#include <WiiChuck.h>
-#include "WiiChuckButton.h"
+#ifndef _JOYPAD_H_
+#define _JOYPAD_H_
 
 class Joypad {
 public:
 
-    Joypad()
-        : accessory()
-        , zButton(&accessory, 10)
-        , cButton(&accessory, 11)
-    { 
+    Joypad() { }
+
+    void update(int8_t _x, int8_t _y, uint32_t _buttons) {
+        lastX = x;
+        x = _x;
+
+        lastY = y;
+        y = _y;
+
+        lastButtons = buttons;
+        buttons = _buttons;
     }
 
-    bool begin() {
-        accessory.begin();
-
-        // Currently only support the nunchuck.
-        if (accessory.type != NUNCHUCK) {
-            return false;
-        }
-
-        // Attempt to read; if we fail, return false.
-        if (!accessory.readData()) {
-            return false;
-        }
-
-        zButton.begin();
-        cButton.begin();
-
-        isInitialized = true;
-
-        return true;
+    void reset() {
+        x = lastX = 0;
+        y = lastY = 0;
+        buttons = lastButtons = 0;
     }
 
-    void update() {
-        if (!isInitialized) {
-            return;
-        }
-
-        accessory.readData();
-        zButton.update();
-        cButton.update();
+    bool isButtonDown(uint32_t b) {
+        return buttons & b;
+    }
+    
+    bool isButtonUp(uint32_t b) {
+        return ~buttons & b;
+    }
+    
+    bool buttonHeld(uint32_t b) {
+        return (buttons & lastButtons) & b;
+    }
+    
+    bool buttonFell(uint32_t b) {
+        return (~buttons & lastButtons) & b;
+    }
+    
+    bool buttonRose(uint32_t b) {
+        return (buttons& ~lastButtons) & b;
+    }
+    
+    bool buttonChanged(uint32_t b) {
+        return (buttons ^ lastButtons) & b; 
     }
 
-    uint8_t getJoyX() const {
-        return isInitialized ? accessory.values[0] : 255/2;
+    int8_t getX() const {
+        return x;
     }
 
-    uint8_t getJoyY() const {
-        // Invert so that down on the stick is down on the glasses.
-        auto value = isInitialized ? accessory.values[1] : 255/2;
-        return 255 - value;
+    int8_t getLastX() const {
+        return lastX;
+    }    
+
+    int8_t getY() const {
+        return y;
     }
 
-    DigitalInput const* getZButton() const {
-        return &zButton;
+    int8_t getLastY() const {
+        return lastY;
     }
 
-    DigitalInput const* getCButton() const {
-        return &cButton;
+    bool stickChanged() const {
+        return (x != lastX) || (y != lastY);
     }
 
 private:
-    Accessory accessory;
-    WiiChuckButton zButton;
-    WiiChuckButton cButton;
+    int8_t x = 0;
+    int8_t lastX = 0;
+    int8_t y = 0;
+    int8_t lastY = 0;
+    uint32_t buttons = 0;
+    uint32_t lastButtons = 0;
 
-    bool isInitialized = false;
 };
 
 #endif

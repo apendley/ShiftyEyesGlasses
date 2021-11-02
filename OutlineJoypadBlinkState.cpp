@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Adafruit_TinyUSB.h>
 #include "OutlineJoypadBlinkState.h"
 #include "OutlineJoypadIdleState.h"
 
@@ -11,7 +12,7 @@ FSMState* OutlineJoypadBlinkState::updateTransitions() {
     }
 
     // Once there, if the z button is off, go back to idle.
-    if (world->getJoypad()->getZButton()->isOff()) {
+    if (world->getJoypad()->isButtonUp(GAMEPAD_BUTTON_Z)) {
         return States::outlineJoypadIdle;
     }
 

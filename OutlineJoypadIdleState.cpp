@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Adafruit_TinyUSB.h>
 #include "OutlineJoypadIdleState.h"
 #include "OutlineJoypadBlinkState.h"
 #include "OutlineJoypadGlareState.h"
@@ -12,10 +13,10 @@ FSMState* OutlineJoypadIdleState::updateTransitions() {
     }
 
     // If the z button rose, blink
-    if (world->getJoypad()->getZButton()->rose()) {
+    if (world->getJoypad()->buttonRose(GAMEPAD_BUTTON_Z)) {
         return States::outlineJoypadBlink;
     }
-    else if (world->getJoypad()->getCButton()->rose()) {
+    else if (world->getJoypad()->buttonRose(GAMEPAD_BUTTON_C)) {
         return States::outlineJoypadGlare;
     }
 

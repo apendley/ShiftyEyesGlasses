@@ -8,8 +8,7 @@
 
 enum class SetupErrorCode: uint8_t {
     none = 0,
-    glassesFailure,        
-    joypadFailure,
+    glassesFailure
 };
 
 class World {
@@ -19,10 +18,7 @@ public:
 
     // Returns 0 if no issue, otherwise an error code
     SetupErrorCode begin() {
-        Wire.setClock(400000);
-        Wire1.setClock(800000);
-
-        if (!glasses.begin(IS3741_ADDR_DEFAULT, &Wire1)) {
+        if (!glasses.begin(IS3741_ADDR_DEFAULT)) {
             return SetupErrorCode::glassesFailure;
         }
 
@@ -35,11 +31,7 @@ public:
         glasses.setRotation(0);
     
         // Clear glasses
-        glasses.fill(0);                
-    
-        if (!joypad.begin()) {
-            return SetupErrorCode::joypadFailure;
-        }
+        glasses.fill(0);
 
         return SetupErrorCode::none;
     }
@@ -130,7 +122,7 @@ private:
 private:
     
     Adafruit_EyeLights_buffered glasses;
-    Joypad joypad;    
+    Joypad joypad;
     Eyes eyes;
 };
 

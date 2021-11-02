@@ -21,16 +21,16 @@ public:
         auto world = getWorld();
         
         // Invert since "left" is opposite wearer's left if looking at glasses.
-        int joyX = 255 - world->getJoypad()->getJoyX();
+        uint16_t joyX = 255 - (world->getJoypad()->getX() + 128);
     
         // Invert so that "down" matches down on the glasses.
-        int joyY = world->getJoypad()->getJoyY();
+        uint16_t joyY = 255 - (world->getJoypad()->getY() + 128);
     
         // bias joyY downward since there are fewer pixels on the bottom half
         joyY = min(joyY + 48, 255);
         
-        int8_t pupilX = map(joyX, 25, 230, 1, 6);
-        int8_t pupilY = map(joyY, 25, 230, 0, 3);
+        int8_t pupilX = map(joyX, 0, 255, 1, 6);
+        int8_t pupilY = map(joyY, 0, 255, 0, 3);
         world->getEyes()->setPupilPosition(pupilX, pupilY);
     }
 };
